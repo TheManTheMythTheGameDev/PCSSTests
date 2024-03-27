@@ -112,6 +112,8 @@ int main()
 
         EndMode3D();
 
+        DrawText(TextFormat("Frame time: %f ms", dt * 1000.0f), 20, 20, 20, BLUE);
+
         EndDrawing();
         //----------------------------------------------------------------------------------
     }

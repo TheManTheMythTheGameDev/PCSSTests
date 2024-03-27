@@ -80,26 +80,8 @@ ivec2 GetSampleOffset(int i, int maxI, float width)
     return ivec2(RandomRotate(VogelDiskSample(i, maxI, InterleavedGradientNoise(gl_FragCoord.xy))) * width);
 }
 
-void main()
+float GetShadow(vec3 normal, vec3 l)
 {
-    // Texel color fetching from texture sampler
-    vec4 texelColor = texture(texture0, fragTexCoord);
-    vec3 lightDot = vec3(0.0);
-    vec3 normal = normalize(fragNormal);
-    vec3 viewD = normalize(viewPos - fragPosition);
-    vec3 specular = vec3(0.0);
-
-    vec3 l = -lightDir;
-
-    float NdotL = max(dot(normal, l), 0.0);
-    lightDot += lightColor.rgb*NdotL;
-
-    float specCo = 0.0;
-    if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(l), normal))), 16.0); // 16 refers to shine
-    specular += specCo;
-
-    finalColor = (texelColor*((colDiffuse + vec4(specular, 1.0))*vec4(lightDot, 1.0)));
-
     // Shadow calculations
     vec4 fragPosLightSpace = lightVP * vec4(fragPosition, 1);
     fragPosLightSpace.xyz /= fragPosLightSpace.w; // Perform the perspective division
@@ -156,33 +138,15 @@ void main()
             blockerAvg += curBlockerSample;
         }
     }
-
-
-    /*for (int x = -(BLOCKER_SEARCH_WIDTH / 8); x < BLOCKER_SEARCH_WIDTH / 8; x++)
-    {
-        for (int y = -(BLOCKER_SEARCH_WIDTH / 8); y < BLOCKER_SEARCH_WIDTH / 8; y++)
-        {
-            vec4 depths = textureGatherOffset(shadowMap, vec3(texelPos, cascade), ivec2(x * 4, y * 4), 0);
-            for (int d = 0; d < 4; d++)
-            {
-                float curBlockerSample = depths[d];
-                if (curDepth > curBlockerSample)
-                {
-                    numBlockers++;
-                    blockerAvg += curBlockerSample;
-                }
-            }
-        }
-    }*/
     
-    /*if (numBlockers <= 0)
+    if (numBlockers <= 0)
     {
         return 0;
     }
     if (numBlockers >= BLOCKER_SEARCH_WIDTH * BLOCKER_SEARCH_WIDTH)
     {
         return 1;
-    }*/
+    }
 
     blockerAvg /= float(numBlockers);
 
@@ -194,6 +158,31 @@ void main()
         shadow += ((curDepth - bias) > (texture(shadowMap, sampleCoords + RandomRotate(VogelDiskSample(i, PCF_NUM_SAMPLES, InterleavedGradientNoise(gl_FragCoord.xy) * 2)) * sampleWidth * texelSize).r)) ? 1 : 0;
     }
     shadow /= PCF_NUM_SAMPLES;
+
+    return shadow;
+}
+
+void main()
+{
+    // Texel color fetching from texture sampler
+    vec4 texelColor = texture(texture0, fragTexCoord);
+    vec3 lightDot = vec3(0.0);
+    vec3 normal = normalize(fragNormal);
+    vec3 viewD = normalize(viewPos - fragPosition);
+    vec3 specular = vec3(0.0);
+
+    vec3 l = -lightDir;
+
+    float NdotL = max(dot(normal, l), 0.0);
+    lightDot += lightColor.rgb*NdotL;
+
+    float specCo = 0.0;
+    if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(l), normal))), 16.0); // 16 refers to shine
+    specular += specCo;
+
+    finalColor = (texelColor*((colDiffuse + vec4(specular, 1.0))*vec4(lightDot, 1.0)));
+
+    float shadow = GetShadow(normal, l);
     
     finalColor = mix(finalColor, vec4(0, 0, 0, 1), shadow);
 
