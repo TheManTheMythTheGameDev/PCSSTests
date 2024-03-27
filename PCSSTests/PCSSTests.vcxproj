@@ -22,8 +22,8 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="resources\shaders\shadowMap.fs" />
-    <None Include="resources\shaders\shadowMap.vs" />
+    <None Include="resources\shaders\shadowMap.frag" />
+    <None Include="resources\shaders\shadowMap.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

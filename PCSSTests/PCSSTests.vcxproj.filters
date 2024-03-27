@@ -23,10 +23,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="resources\shaders\shadowMap.fs">
+    <None Include="resources\shaders\shadowMap.frag">
       <Filter>Source Files\shaders</Filter>
     </None>
-    <None Include="resources\shaders\shadowMap.vs">
+    <None Include="resources\shaders\shadowMap.vert">
       <Filter>Source Files\shaders</Filter>
     </None>
   </ItemGroup>

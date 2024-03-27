@@ -24,7 +24,7 @@ int main()
     cam.up = Vector3{ 0.0f, 1.0f, 0.0f };
     cam.fovy = 45.0f;
 
-    Shader shadowShader = LoadShader("resources/shaders/shadowMap.vs", "resources/shaders/shadowMap.fs");
+    Shader shadowShader = LoadShader("resources/shaders/shadowMap.vert", "resources/shaders/shadowMap.frag");
     shadowShader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shadowShader, "viewPos");
     Vector3 lightDir = Vector3Normalize(Vector3{ 0.0f, -1.0f, -1.0f });
     Color lightColor = WHITE;
@@ -39,6 +39,7 @@ int main()
     int lightVPLoc = GetShaderLocation(shadowShader, "lightVP");
     int shadowMapLoc = GetShaderLocation(shadowShader, "shadowMap");
     SetShaderValue(shadowShader, GetShaderLocation(shadowShader, "shadowMapResolution"), &shadowMapResolution, SHADER_UNIFORM_INT);
+    int frustumWidthLoc = GetShaderLocation(shadowShader, "frustumWidth");
 
     Model cube = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
     cube.materials[0].shader = shadowShader;
@@ -101,6 +102,8 @@ int main()
         rlActiveTextureSlot(10);
         rlEnableTexture(shadowMap.depth.id);
         rlSetUniform(shadowMapLoc, &slot, SHADER_UNIFORM_INT, 1);
+        float frustumRight = cam.fovy / 2.0f; // Note: if the shadow map were to have different dimensions along the x and y axes, this would have to be multiplied by the aspect ratio (x / y)
+        rlSetUniform(frustumWidthLoc, &frustumRight, SHADER_UNIFORM_FLOAT, 1);
 
         BeginMode3D(cam);
 
