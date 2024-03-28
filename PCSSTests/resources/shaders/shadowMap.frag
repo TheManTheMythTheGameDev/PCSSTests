@@ -33,9 +33,8 @@ uniform float frustumWidth;
 #define LIGHT_SIZE 100
 
 #define BLOCKER_SEARCH_WIDTH 128
-#define PCF_WIDTH 8
-#define BLOCKER_SEARCH_NUM_SAMPLES 16
-#define PCF_NUM_SAMPLES 32
+#define BLOCKER_SEARCH_NUM_SAMPLES 128
+#define PCF_NUM_SAMPLES 128
 
 vec2 RotateAroundOrigin(vec2 point, float angle)
 {
@@ -75,9 +74,9 @@ vec2 VogelDiskSample(int sampleIndex, int sampleCount, float phi)
     return vec2(cosT, sinT) * r;
 }
 
-ivec2 GetSampleOffset(int i, int maxI, float width)
+vec2 GetSampleOffset(int i, int maxI, float width)
 {
-    return ivec2(RandomRotate(VogelDiskSample(i, maxI, InterleavedGradientNoise(gl_FragCoord.xy))) * width);
+    return RandomRotate(VogelDiskSample(i, maxI, InterleavedGradientNoise(gl_FragCoord.xy))) * width;
 }
 
 float GetShadow(vec3 normal, vec3 l)
@@ -91,7 +90,7 @@ float GetShadow(vec3 normal, vec3 l)
     // Slope-scale depth bias: depth biasing reduces "shadow acne" artifacts, where dark stripes appear all over the scene.
     // The solution is adding a small bias to the depth
     // In this case, the bias is proportional to the slope of the surface, relative to the light
-    float bias = max(0.0002 * (1.0 - dot(normal, l)), 0.00002) + 0.00001;
+    float bias = max(0.0002 * (1.0 - dot(normal, l)), 0.00002) + 0.0001;
     int shadowCounter = 0;
     const int numSamples = 9;
     float shadow = 0.0;
@@ -130,8 +129,8 @@ float GetShadow(vec3 normal, vec3 l)
     int blockerSearchWidth = int(lightSizeUV * curDepth);
     for (int i = 0; i < BLOCKER_SEARCH_NUM_SAMPLES; i++)
     {
-        ivec2 curOffset = GetSampleOffset(i, BLOCKER_SEARCH_NUM_SAMPLES, BLOCKER_SEARCH_WIDTH);
-        float curBlockerSample = texture(shadowMap, sampleCoords + RandomRotate(VogelDiskSample(i, BLOCKER_SEARCH_NUM_SAMPLES, InterleavedGradientNoise(gl_FragCoord.xy) * 2)) * BLOCKER_SEARCH_WIDTH * texelSize / frustumWidth).r;
+        vec2 curOffset = GetSampleOffset(i, BLOCKER_SEARCH_NUM_SAMPLES, BLOCKER_SEARCH_WIDTH);
+        float curBlockerSample = texture(shadowMap, sampleCoords + curOffset * texelSize).r;
         if (curDepth - bias > curBlockerSample)
         {
             numBlockers++;
@@ -143,7 +142,7 @@ float GetShadow(vec3 normal, vec3 l)
     {
         return 0;
     }
-    if (numBlockers >= BLOCKER_SEARCH_WIDTH * BLOCKER_SEARCH_WIDTH)
+    if (numBlockers >= BLOCKER_SEARCH_NUM_SAMPLES)
     {
         return 1;
     }
@@ -151,11 +150,13 @@ float GetShadow(vec3 normal, vec3 l)
     blockerAvg /= float(numBlockers);
 
 
-    float sampleWidth = lightSizeUV * ((curDepth - blockerAvg) / (blockerAvg));
+    float sampleWidth = min(lightSizeUV * ((curDepth - blockerAvg) / (blockerAvg)), BLOCKER_SEARCH_WIDTH);
+
     // Apply PCF
     for (int i = 0; i < PCF_NUM_SAMPLES; ++i)
     {
-        shadow += ((curDepth - bias) > (texture(shadowMap, sampleCoords + RandomRotate(VogelDiskSample(i, PCF_NUM_SAMPLES, InterleavedGradientNoise(gl_FragCoord.xy) * 2)) * sampleWidth * texelSize).r)) ? 1 : 0;
+        vec2 curOffset = GetSampleOffset(i, PCF_NUM_SAMPLES, sampleWidth);
+        shadow += ((curDepth - bias) > (texture(shadowMap, sampleCoords + curOffset * texelSize).r)) ? 1 : 0;
     }
     shadow /= PCF_NUM_SAMPLES;
 
